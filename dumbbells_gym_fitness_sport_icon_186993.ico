@@ -1,0 +1,30 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace ddocpTPH
+{
+    internal class CardioClass:ActivityClass
+    {
+        public CardioClass(float m1, float m2, float m3)
+        {
+            Metric1Value = m1;
+            Metric2Value = m2;
+            Metric3Value = m3;
+
+        }
+
+        public float CardioActivity()
+        {
+            int uid = GlobalData._UserId;
+            Metric1Value = Metric1Value + 4; // intensity value to METs value
+            Metric2Value = Metric2Value / 60; // minute to hour format
+            float calories = (Metric1Value * Metric2Value * Metric3Value * 3.5f) / 2; // ( METs * duration * weight*  3.5)/2
+            return calories;
+        }
+
+
+    }
+}

@@ -1,0 +1,66 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace ddocpTPH
+{
+    public class ActivityClass
+    {
+        float metric1Value;
+        float metric2Value;
+        float metric3Value;
+        
+
+        public float Metric1Value
+        {
+            get { return metric1Value; }
+            set { metric1Value = value; }
+        }
+
+        public float Metric2Value
+        {
+            get { return metric2Value; }
+            set { metric2Value = value; }
+        }
+
+        public float Metric3Value
+        {
+            get { return metric3Value; }
+            set { metric3Value = value; }
+        }
+
+        
+
+        public decimal CurrentTotalCalories(int uid)
+        {
+            DBClass db = new DBClass();
+
+            return db.CurrentTotalCalories(uid);
+
+        }
+
+
+
+        public void InsertRecord(int uid, int aid, float m1, float m2, float m3, float curcal, string date)
+        {
+            DBClass db = new DBClass();
+            db.Insert(uid, aid, m1, m2, m3, curcal, date);
+        }
+        
+        public void DeleteRecord(int rid, int uid, int aid)
+        {
+            DBClass db = new DBClass();
+            db.Delete(rid, uid, aid);
+        }
+
+        public void UpdateRecord(int mid, int uid, int aid, float m1, float m2, float m3, float curcal)
+        {
+            DBClass db = new DBClass();
+            db.Update(mid, uid, aid, m1, m2, m3, curcal);
+
+        }
+
+    }
+}

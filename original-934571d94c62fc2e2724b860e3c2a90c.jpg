@@ -1,0 +1,304 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Data.OleDb;
+using System.Data;
+using System.Windows.Forms;
+using ddocpTPH;
+using System.Drawing;
+using System.Globalization;
+using System.Security.Cryptography;
+
+namespace ddocpTPH
+{
+    public class DBClass
+    {
+        OleDbCommand mycmd;
+        OleDbDataReader myreader;
+        OleDbConnection conn;
+        String constr;
+
+        public DBClass() //constuctor
+        {
+            constr = "Provider=Microsoft.ACE.OLEDB.12.0;" + "Data Source=" + Application.StartupPath + @"\FitnessDB.mdb";
+            conn = new OleDbConnection(@"");
+            conn.ConnectionString = constr;
+        }
+
+        private int getMaxUserID()
+        {
+            mycmd = new OleDbCommand();
+            mycmd.Connection = conn;
+
+            int id = 0;
+            string query = "Select MAX(user_id) from [User]";
+            mycmd.CommandText = query;
+            try
+            {
+                conn.Open();
+                if (mycmd.ExecuteScalar() != DBNull.Value)
+                    id = Convert.ToInt32(mycmd.ExecuteScalar().ToString());
+                else 
+                    id = 0;
+
+                return id + 1;
+            }
+            catch (OleDbException oex) { throw oex; }
+            //catch (OleDbException oex) { MessageBox.Show("Something Wrong"); }
+            finally
+            {
+                conn.Close();
+            }
+        }
+
+        public int checkExistingUser(string UserName)
+        {
+            int id = 0;
+            string query = "Select user_id from [User] where user_name='" + UserName + "'";
+
+            mycmd = new OleDbCommand();
+            mycmd.Connection = conn;
+            mycmd.CommandText = query;
+            try
+            {
+
+                conn.Open();
+
+                OleDbDataReader reader = mycmd.ExecuteReader();
+                while (reader.Read())
+                {
+                    id = Int32.Parse(reader.GetValue(0).ToString());    //array position "0" value - "cid"
+                }
+
+            }
+            catch (OleDbException oe) 
+            {
+                MessageBox.Show("Exception Error");
+            }
+            conn.Close();
+            return id;
+        }
+
+        public void CreateAccount(User u)  //carry input from BCCustomer
+        {
+
+            int id = getMaxUserID();   //Get last user ID from DB
+            string query = "INSERT INTO [User] VALUES " + "(" + id + ",'" + u.UserName + "','" + u.Password + "','" + u.Email + "','" + u.TargetCal + "')";
+
+            conn.Open();
+            mycmd = new OleDbCommand(query, conn);
+
+            mycmd.ExecuteScalar();
+            conn.Close();
+
+        }
+
+        public User checkRegCustomer(string username, string password)
+        {
+            User u = new User();
+            int id = 0, tarCal = 0;
+            string email = "";
+            //for MSAccess case sensitive StrComp(Table1.Field1, Table2.Field2, 0) = 0
+            string query = "Select * from [User] where user_name='" + username + "' and StrComp(user_password,'" + password + "',0)=0";
+            mycmd = new OleDbCommand();
+            mycmd.Connection = conn;
+            mycmd.CommandText = query;
+            try
+            {
+                conn.Open();
+                OleDbDataReader reader = mycmd.ExecuteReader();
+                while (reader.Read())
+                {
+                    id = Int32.Parse(reader.GetValue(0).ToString());    //array position "0" value - "id"
+                    tarCal = Int32.Parse(reader.GetValue(4).ToString());
+                    email = reader.GetValue(3).ToString();
+
+                }
+                u.Id = id;
+                u.TargetCal = tarCal;
+                u.Email = email;
+
+            }
+            catch (OleDbException oe) { }
+            conn.Close();
+            return u;
+        }
+
+        public List<string> getActivities()
+        {
+            var items = new List<string>();
+            items.Add("none");
+
+            string query = "Select activity_name from [Activity] order by activity_id asc";
+            mycmd = new OleDbCommand();
+            mycmd.Connection = conn;
+            mycmd.CommandText = query;
+            try
+            {
+                conn.Open();
+
+                OleDbDataReader myreader = mycmd.ExecuteReader();
+                items.Clear();
+
+                while (myreader.HasRows)
+                {
+                    myreader.GetName(0);
+                    while (myreader.Read())
+                    {
+
+                        items.Add(Convert.ToString(myreader.GetValue(0).ToString()));
+                    }
+
+                    myreader.NextResult();
+                }
+            }
+            catch (OleDbException oex) { throw oex; }
+            finally
+            {
+                conn.Close();
+            }
+
+            return items;
+        }
+
+        public DataSet getTable(int uid, int aid)
+        {
+            string sql ="";
+            if (aid == 0)
+            {
+                sql = "SELECT record_id, activity_id, record_date, metric1, metric2, metric3, current_cal AS calorie_burnt FROM [Record] where user_id=" + uid + " order by record_date desc";
+
+            }
+            else
+            {
+                sql = "SELECT record_id, activity_id, record_date, metric1, metric2, metric3, current_cal AS calorie_burnt FROM [Record] where user_id=" + uid + "AND activity_id=" + aid + " order by record_date desc";
+
+            }
+
+            OleDbConnection connection = new OleDbConnection(constr);
+            OleDbDataAdapter dataadapter = new OleDbDataAdapter(sql, connection);
+            DataSet ds = new DataSet();
+            connection.Open();
+            dataadapter.Fill(ds, "UserActivityMatricTable");
+            connection.Close();
+            return ds;
+
+        }
+
+        public DataSet getHistory(int uid)
+        {
+            string sql = "";
+            sql = "SELECT [Record].record_date, [Activity].activity_name, [Record].current_cal AS calorie_burnt \r\nFROM [Activity] INNER JOIN [Record] ON [Activity].activity_id = [Record].activity_id\r\nWhere [Record].user_id ="+ uid+ " ORDER BY [Record].record_date desc;";
+
+            OleDbConnection connection = new OleDbConnection(constr);
+            OleDbDataAdapter dataadapter = new OleDbDataAdapter(sql, connection);
+            DataSet ds = new DataSet();
+            connection.Open();
+            dataadapter.Fill(ds, "HistoryTable");
+            connection.Close();
+            return ds;
+
+        }
+
+        public decimal CurrentTotalCalories(int uid)
+        {
+
+            mycmd = new OleDbCommand();
+            mycmd.Connection = conn;
+            decimal totalcal = 0;
+
+            string query = "Select SUM(current_cal) from [Record] WHERE user_id=" + uid + " GROUP BY user_id";
+            mycmd.CommandText = query;
+            try
+            {
+                conn.Open();
+                if (mycmd.ExecuteScalar() != DBNull.Value)
+                    try
+                    {
+                        totalcal = Convert.ToDecimal(mycmd.ExecuteScalar().ToString());
+                    }
+                    catch (System.NullReferenceException) { totalcal = 0; }
+            }
+            catch (OleDbException oex) { throw oex; }
+            finally
+            {
+                conn.Close();
+            }
+            return totalcal;
+        }
+
+        public void Insert(int uid, int aid, float m1, float m2, float m3, float curcal, string date)
+        {
+            int mid = getMaxActivityId();  //Get max activity ID from DB
+            string query = "INSERT INTO [Record] VALUES " + "(" + mid + "," + uid + "," + aid + "," + m1 + "," + m2 + "," + m3 + "," + curcal + ",'" + date + "'" + ")";
+
+
+            conn.Open();
+            mycmd = new OleDbCommand(query, conn);
+
+            mycmd.ExecuteScalar();
+            conn.Close();
+        }
+        public void Update(int rid, int uid, int aid, float m1, float m2, float m3, float curcal)
+        {
+
+            string query = "UPDATE [Record] SET metric1=" + m1 + ", metric2=" + m2 + ", metric3=" + m3 + ", current_cal=" + curcal + " WHERE record_id=" + rid + " AND user_id=" + uid + " AND activity_id=" + aid;
+
+            conn.Open();
+            mycmd = new OleDbCommand(query, conn);
+
+            mycmd.ExecuteScalar();
+            conn.Close();
+        }
+
+        public void Delete(int rid, int uid, int aid)
+        {
+            string query = "DELETE FROM [Record] WHERE record_id=" + rid + " AND user_id=" + uid + " AND activity_id=" + aid;
+            conn.Open();
+            mycmd = new OleDbCommand(query, conn);
+
+            mycmd.ExecuteScalar();
+            conn.Close();
+        }
+
+        private int getMaxActivityId() //type (Data type) function 
+        {
+            mycmd = new OleDbCommand();
+            mycmd.Connection = conn;
+
+            int id = 0;
+            string query = "Select MAX(record_id) from [Record]";
+            mycmd.CommandText = query;
+            try
+            {
+                conn.Open();
+                if (mycmd.ExecuteScalar() != DBNull.Value)
+                    id = Convert.ToInt32(mycmd.ExecuteScalar().ToString());
+                else id = 0;
+
+                return id + 1;
+            }
+            catch (OleDbException oex) { throw oex; }
+            finally
+            {
+                conn.Close();
+            }
+        }
+
+        public void UpdateCalorie(int uid, int cal)
+        {
+            string query = "UPDATE [User] SET target_cal=" + cal + " WHERE user_id=" + uid;
+            conn.Open();
+            mycmd = new OleDbCommand(query, conn);
+
+            mycmd.ExecuteScalar();
+            conn.Close();
+        }
+    }
+
+
+
+}
+

@@ -1,0 +1,603 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Data.OleDb;
+using System.Drawing;
+using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using System.Windows.Forms.VisualStyles;
+using System.Xml.Linq;
+
+namespace ddocpTPH
+{
+    public partial class HomeForm : Form
+    {
+        int uid, aid, rid;
+        string activity;
+        DialogResult response;
+        float m1, m2, m3, curCal, totalcurCal;
+        string date;
+        int iRowIndex;
+
+
+        OleDbCommand mycmd;
+        OleDbDataReader myreader;
+        OleDbConnection conn;
+        DataTable table;
+        OleDbDataAdapter dataadapter;
+
+        string constr = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source=" + Application.StartupPath + @"\RentalDB.mdb";
+
+        ActivityClass act = new ActivityClass();
+
+
+        public HomeForm()
+        {
+            InitializeComponent();
+            
+            uid = GlobalData._UserId;
+            constr = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source=" + Application.StartupPath + @"\FitnessDB.mdb";
+
+            string date;
+
+            conn = new OleDbConnection();
+
+            totalcurCal = (float)act.CurrentTotalCalories(uid);
+
+        }
+
+        private void dataGridView1_Click_1(object sender, EventArgs e)
+        {
+            try
+            {
+                iRowIndex = dataGridView1.CurrentRow.Index;
+                
+                databind();
+            }
+            catch (Exception ex) { MessageBox.Show("No record to select"); }
+        }
+        void databind()
+        {
+            //to  update data to dbtable
+            rid = int.Parse(dataGridView1[0, iRowIndex].Value.ToString());
+            aid = int.Parse(dataGridView1[1, iRowIndex].Value.ToString());
+
+            
+
+            
+
+            string query = "SELECT * FROM [Record] WHERE record_id= " + rid + " AND activity_id=" + aid + " AND user_id=" + uid;
+            conn = new OleDbConnection(constr);
+            conn.Open();
+            mycmd = new OleDbCommand(query, conn);
+            OleDbDataReader myreader;
+            myreader = mycmd.ExecuteReader();
+
+            while (myreader.Read())
+            {
+                rid = int.Parse(myreader.GetValue(0).ToString());
+                txtMetric1.Text = myreader.GetValue(3).ToString(); 
+                txtMetric2.Text = myreader.GetValue(4).ToString();
+                txtMetric3.Text = myreader.GetValue(5).ToString();
+
+            }
+            myreader.Close();
+            conn.Close();
+
+        }
+
+        //Changes to the form according to the selected activity from the combo box 
+        private void cboxActivity_SelectedIndexChanged_1(object sender, EventArgs e)
+        {
+
+            
+            DBClass db = new DBClass();
+            uid = GlobalData._UserId;
+            aid = cboxActivity.SelectedIndex + 1;
+            dataGridView1.DataSource = db.getTable(uid, aid);
+            dataGridView1.DataMember = "UserActivityMatricTable";
+            activity = cboxActivity.GetItemText(cboxActivity.SelectedItem.ToString());
+            activity = cboxActivity.SelectedItem.ToString();
+
+
+            if (activity == "swimming")
+            {
+                lblMetric1.Text = "Intensity( 1 to 10)";
+                lblMetric2.Text = "Time taken (minutes)";
+                lblMetric3.Text = "Weight (kg)";
+
+            }
+            else if (activity == "walking")
+            {
+                lblMetric1.Text = "Height(cm)";
+                lblMetric2.Text = "Steps";
+                lblMetric3.Text = "Weight (kg)";
+            }
+            else if (activity == "yoga")
+            {
+                lblMetric1.Text = "Intensity(1 to 5)";
+                lblMetric2.Text = "Time Taken(minutes)";
+                lblMetric3.Text = "Weight (kg)";
+            }
+            else if (activity == "cycling")
+            {
+                lblMetric1.Text = "Intensity(1 to 5)";
+                lblMetric2.Text = "Time Taken(minutes)";
+                lblMetric3.Text = "Weight (kg)";
+            }
+            else if (activity == "tennis")
+            {
+                lblMetric1.Text = "Number of laps";
+                lblMetric2.Text = "Duration of a lap(minute)";
+                lblMetric3.Text = "Weight (kg)";
+            }
+            else if (activity == "cardio")
+            {
+                lblMetric1.Text = "Intensity(1 to 5)";
+                lblMetric2.Text = "Time Taken(minutes)";
+                lblMetric3.Text = "Weight (kg)";
+            }
+            groupBox2.Text = "All the records of " + activity;
+        }
+
+
+        private void btnAddRecord_Click_1(object sender, EventArgs e)
+        {
+            if (txtMetric1.Text == "" || txtMetric2.Text == "" || txtMetric3.Text == "")
+            {
+                MessageBox.Show("Please enter all the fields", "Invalid", MessageBoxButtons.OKCancel, MessageBoxIcon.Error);
+                return;
+            }
+
+            if (txtMetric1.Text == "0" || txtMetric2.Text == "0" || txtMetric3.Text == "0")
+            {
+                MessageBox.Show("Please enter all the fields", "Invalid", MessageBoxButtons.OKCancel, MessageBoxIcon.Error);
+                return;
+            }
+
+            
+
+            m1 = float.Parse(txtMetric1.Text);
+            m2 = float.Parse(txtMetric2.Text);
+            m3 = float.Parse(txtMetric3.Text);
+
+            response = MessageBox.Show("Do you want to add new record?", "Add new record?", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            if (response == DialogResult.No) return;
+            if (activity == "swimming")
+            {
+                if (m1>10)
+                {
+                    MessageBox.Show("Please enter valid value for Intensity.(Between 1 to 10)", "Invalid", MessageBoxButtons.OKCancel, MessageBoxIcon.Error);
+                    return;
+                }
+                
+                SwimmingClass swimming = new SwimmingClass(m1, m2, m3);
+                curCal = swimming.SwimmingActivity();
+
+                //int tarCal = GlobalData._targetCalorie;
+                //decimal totalCal = swimming.CurrentTotalCalories(uid);
+                //if (totalCal >= tarCal)
+                //    MessageBox.Show("Congrats!!!Your goal has been met!!!");
+
+              
+
+            }
+            else if (activity == "walking")
+            {
+
+                WalkingClass walking = new WalkingClass(m1, m2, m3);
+                curCal = walking.WalkingActivity();
+
+                //int tarCal = GlobalData._targetCalorie;
+                //decimal totalCal = walking.CurrentTotalCalories(uid);
+                //if (totalCal >= tarCal)
+                //    MessageBox.Show("Congrats!!!Your goal has been met!!!");
+
+
+  
+            }
+            else if (activity == "yoga")
+            {
+                if (m1 > 5)
+                {
+                    MessageBox.Show("Please enter valid value for Intensity.(Between 1 to 5)", "Invalid", MessageBoxButtons.OKCancel, MessageBoxIcon.Error);
+                    return;
+                }
+
+                YogaClass yoga = new YogaClass(m1, m2, m3);
+                curCal = yoga.YogaActivity();
+
+                //int tarCal = GlobalData._targetCalorie;
+                //decimal totalCal = yoga.CurrentTotalCalories(uid);
+                //if (totalCal >= tarCal)
+                //    MessageBox.Show("Congrats!!!Your goal has been met!!!");
+
+
+            }
+            else if (activity == "cycling")
+            {
+                if (m1 > 5)
+                {
+                    MessageBox.Show("Please enter valid value for Intensity.(Between 1 to 5)", "Invalid", MessageBoxButtons.OKCancel, MessageBoxIcon.Error);
+                    return;
+                }
+
+                CyclingClass cycling = new CyclingClass(m1, m2, m3);
+                curCal = cycling.CyclingActivity();
+
+                //int tarCal = GlobalData._targetCalorie;
+                //decimal totalCal = cycling.CurrentTotalCalories(uid);
+                //if (totalCal >= tarCal)
+                //    MessageBox.Show("Congrats!!!Your goal has been met!!!");
+
+            }
+            else if (activity == "tennis")
+            {
+                TennisClass tennis = new TennisClass(m1, m2, m3);
+                curCal = tennis.TennisActivity();
+                
+
+                //int tarCal = GlobalData._targetCalorie;
+                //decimal totalCal = tennis.CurrentTotalCalories(uid);
+                //if (totalCal >= tarCal)
+                //    MessageBox.Show("Congrats!!!Your goal has been met!!!");
+
+            }
+            else if (activity == "cardio")
+            {
+                if (m1 > 5)
+                {
+                    MessageBox.Show("Please enter valid value for Intensity.(Between 1 to 5)", "Invalid", MessageBoxButtons.OKCancel, MessageBoxIcon.Error);
+                    return;
+                }
+                CardioClass cardio = new CardioClass(m1, m2, m3);
+                curCal = cardio.CardioActivity();
+
+
+                //int tarCal = GlobalData._targetCalorie;
+                //decimal totalCal = cardio.CurrentTotalCalories(uid);
+                //if (totalCal >= tarCal)
+                //    MessageBox.Show("Congrats!!!Your goal has been met!!!");
+
+
+            }
+            date = dateTimePicker1.Text;
+
+            //Adding activity data to the database 
+            act.InsertRecord(uid, aid, m1, m2, m3, curCal, date);
+            totalcurCal = (float)act.CurrentTotalCalories(uid);
+
+            int tarCal = GlobalData._targetCalorie;
+          
+            if (totalcurCal >= tarCal)
+                MessageBox.Show("Congrats!!!Your goal has been met!!!");
+
+            lblTotalCurCal.Text = "Total Calorie Burnt: " + totalcurCal.ToString();
+            lblCurrentCal.Text = "Current Calorie Burnt: "+ Math.Round(curCal, 0);
+            lblStatus.Text = "Status: You added a new record to "+activity;
+
+
+            //to update the datagridview automatically
+            DBClass db = new DBClass();
+            int index = cboxActivity.SelectedIndex + 1;
+            dataGridView1.DataSource = db.getTable(uid, index);
+            dataGridView1.DataMember = "UserActivityMatricTable";
+
+        }
+
+        private void btnUpdate_Click(object sender, EventArgs e)
+        {
+            if (txtMetric1.Text == "" || txtMetric2.Text == "" || txtMetric3.Text == "")
+            {
+                MessageBox.Show("Please enter all the fields", "Invalid", MessageBoxButtons.OKCancel, MessageBoxIcon.Error);
+                return;
+            }
+
+            if (txtMetric1.Text == "0" || txtMetric2.Text == "0" || txtMetric3.Text == "0")
+            {
+                MessageBox.Show("Please enter all the fields", "Invalid", MessageBoxButtons.OKCancel, MessageBoxIcon.Error);
+                return;
+            }
+
+            
+
+            response = MessageBox.Show("Do you want to update this record?", "Update record", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            if (response == DialogResult.No) return;
+
+            try
+            {
+                
+                    if (activity == "swimming")
+                    {
+                        m1 = float.Parse(txtMetric1.Text);
+                        m2 = float.Parse(txtMetric2.Text);
+                        m3 = float.Parse(txtMetric3.Text);
+
+                        SwimmingClass sc = new SwimmingClass(m1, m2, m3);
+                        curCal = sc.SwimmingActivity();
+
+                        //int tarCal = GlobalData._targetCalorie;
+                        //decimal totalCal = sc.CurrentTotalCalories(uid);
+                        //if (totalCal >= tarCal)
+                        //{
+                        //    MessageBox.Show("Congrats!!!Your goal has been met!!!");
+
+                        //}
+
+
+                    }
+                    else if (activity == "walking")
+                    {
+
+                        m1 = float.Parse(txtMetric1.Text);
+                        m2 = float.Parse(txtMetric2.Text);
+                        m3 = float.Parse(txtMetric3.Text);
+
+                        WalkingClass wc = new WalkingClass(m1, m2, m3);
+                        curCal = wc.WalkingActivity();
+
+                        //int tarCal = GlobalData._targetCalorie;
+                        //decimal totalCal = wc.CurrentTotalCalories(uid);
+                        //if (totalCal >= tarCal)
+                        //{
+                        //    MessageBox.Show("Congrats!!!Your goal has been met!!!");
+
+                        //}
+
+                    }
+                    else if (activity == "yoga")
+                    {
+
+                        m1 = float.Parse(txtMetric1.Text);
+                        m2 = float.Parse(txtMetric2.Text);
+                        m3 = float.Parse(txtMetric3.Text);
+
+                        YogaClass yoga = new YogaClass(m1, m2, m3);
+                        curCal = yoga.YogaActivity();
+
+                        //int tarCal = GlobalData._targetCalorie;
+                        //decimal totalCal = yoga.CurrentTotalCalories(uid);
+                        //if (totalCal >= tarCal)
+                        //{
+                        //    MessageBox.Show("Congrats!!!Your goal has been met!!!");
+
+                        //}
+
+                    }
+                    else if (activity == "cycling")
+                    {
+
+                        m1 = float.Parse(txtMetric1.Text);
+                        m2 = float.Parse(txtMetric2.Text);
+                        m3 = float.Parse(txtMetric3.Text);
+
+                        CyclingClass cycling = new CyclingClass(m1, m2, m3);
+                        curCal = cycling.CyclingActivity();
+
+                        //int tarCal = GlobalData._targetCalorie;
+                        //decimal totalCal = cycling.CurrentTotalCalories(uid);
+                        //if (totalCal >= tarCal)
+                        //{
+                        //    MessageBox.Show("Congrats!!!Your goal has been met!!!");
+
+                        //}
+
+                    }
+                    else if (activity == "tennis")
+                    {
+
+                        m1 = float.Parse(txtMetric1.Text);
+                        m2 = float.Parse(txtMetric2.Text);
+                        m3 = float.Parse(txtMetric3.Text);
+
+                        TennisClass tennis = new TennisClass(m1, m2, m3);
+                        curCal = tennis.TennisActivity();
+
+                        //int tarCal = GlobalData._targetCalorie;
+                        //decimal totalCal = tennis.CurrentTotalCalories(uid);
+                        //if (totalCal >= tarCal)
+                        //{
+                        //    MessageBox.Show("Congrats!!!Your goal has been met!!!");
+
+                        //}
+
+                    }
+                    else if (activity == "calisthenics")
+                    {
+
+                        m1 = float.Parse(txtMetric1.Text);
+                        m2 = float.Parse(txtMetric2.Text);
+                        m3 = float.Parse(txtMetric3.Text);
+
+                        CardioClass cardio = new CardioClass(m1, m2, m3);
+                        curCal = cardio.CardioActivity();
+
+                        //int tarCal = GlobalData._targetCalorie;
+                        //decimal totalCal = cardio.CurrentTotalCalories(uid);
+                        //if (totalCal >= tarCal)
+                        //{
+                        //    MessageBox.Show("Congrats!!!Your goal has been met!!!");
+
+                        //}
+
+                    }
+                    
+                    //updating the date from database with new values
+                    act.UpdateRecord(rid, uid, aid, m1, m2, m3, curCal);
+                
+            }
+
+            catch (Exception ee) { conn.Close(); };
+
+            conn.Close();
+
+
+            totalcurCal = (float)act.CurrentTotalCalories(uid);
+            int tarCal = GlobalData._targetCalorie;
+
+            if (totalcurCal >= tarCal)
+                MessageBox.Show("Congrats!!!Your goal has been met!!!");
+
+            lblTotalCurCal.Text = "Total Calorie Burnt: " + totalcurCal.ToString();
+            lblCurrentCal.Text = "Current Calorie Burnt: " + Math.Round(curCal,0);
+            lblStatus.Text = "Status: You updated an existing record of " + activity;
+
+            //to update the datagridview automatically
+            DBClass db = new DBClass();
+            int index = cboxActivity.SelectedIndex + 1;
+            dataGridView1.DataSource = db.getTable(uid, index);
+            dataGridView1.DataMember = "UserActivityMatricTable";
+        }
+
+        private void btnChgCal_Click(object sender, EventArgs e)
+        {
+            if (txtChgCal.Text == "" )
+            {
+                MessageBox.Show("Please enter a value", "Invalid", MessageBoxButtons.OKCancel, MessageBoxIcon.Error);
+                return;
+            }
+
+            response = MessageBox.Show("Are you sure you want change your target calorie?", "Information", MessageBoxButtons.YesNo);
+            if (response == DialogResult.No) return;
+
+            GlobalData._TargetCalorie = int.Parse(txtChgCal.Text);
+
+            DBClass db = new DBClass();
+            db.UpdateCalorie(uid, int.Parse(txtChgCal.Text));
+            lblTarCal.Text = "Target Calorie: " + GlobalData._TargetCalorie.ToString();
+            MessageBox.Show("You have successfully changed your target calorie to "+ GlobalData._TargetCalorie);
+            lblStatus.Text = "Status: You changed the target calorie to " + GlobalData._TargetCalorie;
+
+
+
+        }
+
+        private void btnExit_Click(object sender, EventArgs e)
+        {
+            response = MessageBox.Show("Are you sure you want to exit?", "Exit", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+            if(response == DialogResult.No) return;
+
+            this.Close();
+        }
+
+        // Keypresses are to validate the textboxes in order to be entered only numbers
+        private void txtMetric1_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            if(!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar))
+            {
+                e.Handled = true;
+            }
+        }
+
+        private void txtMetric2_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar))
+            {
+                e.Handled = true;
+            }
+        }
+
+        private void txtMetric3_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar))
+            {
+                e.Handled = true;
+            }
+        }
+
+        
+
+        private void txtChgCal_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar))
+            {
+                e.Handled = true;
+            }
+        }
+
+        private void btnChgCancel_Click(object sender, EventArgs e)
+        {
+            txtChgCal.Text = "";
+        }
+
+        // to open the profile form
+        private void pictureBox1_Click(object sender, EventArgs e)
+        {
+            ProfileForm pf = new ProfileForm();
+            pf.ShowDialog();
+        }
+
+        private void btnRefresh_Click(object sender, EventArgs e)
+        {
+            DBClass db = new DBClass();
+            uid = GlobalData._UserId;
+            int index = cboxActivity.SelectedIndex + 1;
+            dataGridView1.DataSource = db.getTable(uid, index);
+            dataGridView1.DataMember = "UserActivityMatricTable";
+        }
+
+        private void btnDelete_Click(object sender, EventArgs e)
+        {
+            response = MessageBox.Show("Do you want to delete this record?", "Delete record?", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            if (response == DialogResult.No) return;
+
+            //ActivityClass act = new ActivityClass();
+            act.DeleteRecord(rid, uid, aid);
+            lblStatus.Text = "Status: You deleted a record of " + activity;
+            totalcurCal = (float)act.CurrentTotalCalories(uid);
+            lblTotalCurCal.Text = "Total Calorie Burnt: " + totalcurCal.ToString();
+
+            DBClass db = new DBClass();
+            int index = cboxActivity.SelectedIndex + 1;
+            dataGridView1.DataSource = db.getTable(uid, index);
+            dataGridView1.DataMember = "UserActivityMatricTable";
+        }
+
+
+
+        private void btnClear_Click(object sender, EventArgs e)
+        {
+            txtMetric1.Text = "";
+            txtMetric2.Text = "";
+            txtMetric3.Text = "";
+        }
+
+       
+        private void HomeForm_Load(object sender, EventArgs e)
+        {
+            uid = GlobalData._UserId;
+            aid = cboxActivity.SelectedIndex + 1;
+
+            lblDateNum.Text = DateTime.Now.ToString();
+            lblTarCal.Text = "Target Calorie: " + GlobalData._TargetCalorie.ToString();
+            lblDateNum.Text = DateTime.Now.ToShortDateString();
+            lblWelcome.Text = "Welcome, " + GlobalData._Username;
+            lblTotalCurCal.Text = "Total Calorie Burnt: " + totalcurCal.ToString();
+            
+
+            //cboxActivity.Text = "Select One";
+            //GlobalData._Date = lblDateNum.Text;  
+
+            //Showing the activity records of the user in the datagridview
+            DBClass db = new DBClass();
+            dataGridView1.DataSource = db.getTable(uid, aid);
+            dataGridView1.DataMember = "UserActivityMatricTable";
+            //activity = lstActivities.SelectedItem.ToString();
+            groupBox2.Text = "All the records of " + activity;
+           
+
+            //Showing all the activities from database in combobox
+            List<string> lst = new List<string>();
+            lst = db.getActivities();
+            cboxActivity.DataSource = lst;
+            cboxActivity.Show();
+        }
+
+        
+    }
+}

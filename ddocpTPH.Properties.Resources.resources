@@ -1,0 +1,129 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+
+namespace ddocpTPH
+{
+    public partial class LoginForm : Form
+    {
+
+        int attempt, count;
+        public LoginForm()
+        {
+           
+            InitializeComponent();
+        }
+
+        private void btnLogin_Click(object sender, EventArgs e)
+        {
+            
+            if (txtName.Text == "" || txtPassword.Text == "")
+            {
+                MessageBox.Show("Fill all the fields", "Fields empty", MessageBoxButtons.OKCancel, MessageBoxIcon.Error);
+                return;
+            }
+            User u = new User();
+
+
+            //Direct to home form if the login information are correct
+            if (u.Login(txtName.Text, txtPassword.Text) == true)
+                
+            {
+                this.Hide();   
+                MessageBox.Show("Login Success");
+                GlobalData._Username = txtName.Text;
+                HomeForm home = new HomeForm();
+                home.ShowDialog();
+                this.Close();
+                
+            
+
+
+            }
+            
+            
+            else
+            {
+                attempt--;
+                MessageBox.Show("Incorrect Username or Password.\n Please try again. ("+attempt+") attempts left.", "Invalid", MessageBoxButtons.OKCancel, MessageBoxIcon.Error);  
+                disable();
+            }
+
+        }
+       
+
+ 
+
+        private void LoginForm_Load(object sender, EventArgs e)
+        {
+            attempt = 5;
+        }
+
+       
+        //Functions of the timer for failed login attempts
+        private void timerLogin_Tick(object sender, EventArgs e)
+        {
+            if(count == 0)
+            {
+                timerLogin.Enabled = false;
+                btnLogin.Enabled = true;
+                txtName.Enabled = true;
+                txtPassword.Enabled = true;
+                btnLogin.Text = "Login";
+
+                txtName.Text = "";
+                txtPassword.Text = "";
+            }
+            else
+            {
+                btnLogin.Text = count.ToString();
+                count--;
+            }
+        }
+
+        private void cboxShow_CheckedChanged(object sender, EventArgs e)
+        {
+            if(cboxShow.Checked == true)
+            {
+                txtPassword.UseSystemPasswordChar = false;
+            }
+            else
+            {
+                txtPassword.UseSystemPasswordChar = true;
+            }
+        }
+
+        private void btnBack_Click(object sender, EventArgs e)
+        {
+            this.Hide();
+            RegisterForm register = new RegisterForm();
+            register.ShowDialog();
+            this.Close();
+        }
+
+        // Setting a timer count down after user fails to input correct information 5 times
+        void disable()
+        {
+            if(attempt == 0)
+            {
+                MessageBox.Show("You've reached your maximum 5 attempts!\n Please try again.","Unable to log in",MessageBoxButtons.OKCancel,MessageBoxIcon.Exclamation);
+                attempt = 5;
+                count = 10;
+
+                timerLogin.Enabled = true;
+                btnLogin.Enabled = false;
+                txtName.Enabled = false;
+                txtPassword.Enabled = false;
+            }
+        }
+
+        
+    }
+}
